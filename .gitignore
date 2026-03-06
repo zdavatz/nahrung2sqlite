@@ -1,0 +1,21 @@
+# Rust
+/target/
+Cargo.lock
+*.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output
+nahrung.db
+
+# Input data
+*.xlsx

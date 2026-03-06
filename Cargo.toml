@@ -1,0 +1,10 @@
+[package]
+name = "nahrung2sqlite"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+calamine = "0.26"
+rusqlite = { version = "0.32", features = ["bundled"] }
+anyhow = "1.0"
+ssh2 = "0.9"
