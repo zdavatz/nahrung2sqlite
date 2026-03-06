@@ -4,35 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Single-binary Rust CLI that converts a TrustBox Excel file (`trustbox_2_2_2026.xlsx`) into a SQLite database (`nahrung.db`) and deploys it via `scp` to a remote server. See README.md for full usage details.
+Single-binary Rust CLI that converts TrustBox product data into a SQLite database (`nahrung.db`) and deploys it via `scp` to a remote server. Two data source modes: XLSX file or TrustBox REST API.
 
 ## Commands
 
 - **Build:** `cargo build --release`
-- **Run (full pipeline):** `make run` — builds, copies xlsx into target/release, runs conversion + scp deploy
-- **Build + run:** `make` (or `make all`)
+- **Run from XLSX:** `make run` — builds, copies xlsx into target/release, runs conversion + scp deploy
+- **Run from API:** `make run-api` — requires `TRUSTBOX_USER` and `TRUSTBOX_PASSWORD` env vars
+- **Build + run (XLSX):** `make` (or `make all`)
 - **Check:** `cargo check`
 - **Test:** `cargo test`
 - **Clean:** `make clean`
 
 ## Architecture
 
-Single-file project (`src/main.rs`, ~220 lines). No modules or library crate.
+Single-file project (`src/main.rs`). No modules or library crate.
 
-**Flow:** Open xlsx (calamine) → create SQLite db (rusqlite with bundled SQLite) → for each sheet: read row 1 as headers, skip row 2 (metadata), insert rows 3+ as TEXT → scp the db to remote server.
+**Two execution paths selected by `--api` flag:**
+- **XLSX mode** (`fetch_from_xlsx`): calamine reads Excel → `process_sheet` per sheet → row 1 headers, skip row 2, insert rows 3+
+- **API mode** (`fetch_from_api`): reqwest + Basic Auth → cursor-based pagination via `x-item-cursor` header → discovers columns from JSON keys → inserts into `Items` table
 
-**Key functions:**
-- `process_sheet` — reads headers, creates table, inserts data rows
-- `sanitize_column_name` / `sanitize_table_name` — replace non-alphanumeric chars with `_`; prefix numeric-leading column names with `col_`
-- `insert_row` — pads/truncates row values to match header count; all values stored as TEXT
-- `copy_to_remote` — shells out to `scp`
+**Shared helpers:** `create_table`, `insert_values`, `sanitize_column_name`, `sanitize_table_name`, `copy_to_remote`
 
-**Dependencies:** calamine (Excel reading), rusqlite with `bundled` feature (SQLite), anyhow (error handling), ssh2 (declared but unused — scp is done via `Command`).
+**Dependencies:** calamine (Excel), rusqlite with `bundled` (SQLite), reqwest with `blocking`+`json` (HTTP), serde_json (JSON parsing), anyhow (errors).
 
 ## Important Details
 
-- Input filename is hardcoded: `trustbox_2_2_2026.xlsx`
-- Output filename is hardcoded: `nahrung.db`
-- Remote deploy target is hardcoded in both `main.rs` and `Makefile`
-- The `make run` target expects the xlsx file in the project root and copies it to `target/release/` before executing
+- XLSX filename hardcoded: `trustbox_2_2_2026.xlsx`
+- Output filename hardcoded: `nahrung.db`
+- API base URL: `https://trustbox.firstbase.ch/api/v1`
+- API credentials via env vars: `TRUSTBOX_USER`, `TRUSTBOX_PASSWORD`
+- API pagination chunk size: 100 items per request
+- Remote deploy target hardcoded in `main.rs` and `Makefile`
 - All SQLite columns are TEXT type regardless of source data
