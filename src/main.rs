@@ -16,28 +16,50 @@ const CHUNK_SIZE: u32 = 100;
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let use_api = args.iter().any(|a| a == "--api");
+    let no_deploy = args.iter().any(|a| a == "--no-deploy");
+    let xlsx_file = arg_value(&args, "--xlsx").unwrap_or_else(|| XLSX_FILE.to_string());
+    let output_file = arg_value(&args, "--out").unwrap_or_else(|| OUTPUT_FILE.to_string());
 
-    if Path::new(OUTPUT_FILE).exists() {
-        fs::remove_file(OUTPUT_FILE).context("Failed to remove existing database")?;
+    // Create the output directory if the target path lives in a subfolder (e.g. db/).
+    if let Some(parent) = Path::new(&output_file).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).context("Failed to create output directory")?;
+        }
     }
 
-    let conn = Connection::open(OUTPUT_FILE).context("Failed to create SQLite database")?;
+    if Path::new(&output_file).exists() {
+        fs::remove_file(&output_file).context("Failed to remove existing database")?;
+    }
+
+    let conn = Connection::open(&output_file).context("Failed to create SQLite database")?;
 
     if use_api {
         println!("Fetching data from TrustBox API...");
         fetch_from_api(&conn)?;
     } else {
-        println!("Converting {} to {}", XLSX_FILE, OUTPUT_FILE);
-        fetch_from_xlsx(&conn)?;
+        println!("Converting {} to {}", xlsx_file, output_file);
+        fetch_from_xlsx(&conn, &xlsx_file)?;
     }
 
-    println!("Database created successfully: {}", OUTPUT_FILE);
+    println!("Database created successfully: {}", output_file);
 
-    println!("\nCopying database to remote server...");
-    copy_to_remote(OUTPUT_FILE)?;
+    if no_deploy {
+        println!("Skipping remote deploy (--no-deploy).");
+    } else {
+        println!("\nCopying database to remote server...");
+        copy_to_remote(&output_file)?;
+    }
 
     println!("Done!");
     Ok(())
+}
+
+/// Return the value following a `--flag` on the command line, if present.
+fn arg_value(args: &[String], flag: &str) -> Option<String> {
+    args.iter()
+        .position(|a| a == flag)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
 }
 
 // --- API mode ---
@@ -163,9 +185,9 @@ fn fetch_from_api(conn: &Connection) -> Result<()> {
 
 // --- XLSX mode ---
 
-fn fetch_from_xlsx(conn: &Connection) -> Result<()> {
+fn fetch_from_xlsx(conn: &Connection, xlsx_file: &str) -> Result<()> {
     let mut workbook: Xlsx<_> =
-        open_workbook(XLSX_FILE).context("Failed to open Excel file")?;
+        open_workbook(xlsx_file).context("Failed to open Excel file")?;
 
     for sheet_name in workbook.sheet_names().to_owned() {
         println!("Processing sheet: {}", sheet_name);

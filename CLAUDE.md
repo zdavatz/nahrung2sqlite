@@ -12,6 +12,7 @@ Single-binary Rust CLI that converts TrustBox product data into a SQLite databas
 - **Run from XLSX:** `make run` — builds, copies xlsx into target/release, runs conversion + scp deploy
 - **Run from API:** `make run-api` — requires `TRUSTBOX_USER` and `TRUSTBOX_PASSWORD` env vars
 - **Build + run (XLSX):** `make` (or `make all`)
+- **Local build, no deploy:** `./target/release/nahrung2sqlite --xlsx "xlsx/<dump>.xlsx" --out db/nahrung.db --no-deploy`
 - **Check:** `cargo check`
 - **Test:** `cargo test`
 - **Clean:** `make clean`
@@ -24,16 +25,38 @@ Single-file project (`src/main.rs`). No modules or library crate.
 - **XLSX mode** (`fetch_from_xlsx`): calamine reads Excel → `process_sheet` per sheet → row 1 headers, skip row 2, insert rows 3+
 - **API mode** (`fetch_from_api`): reqwest + Basic Auth → cursor-based pagination via `x-item-cursor` header → discovers columns from JSON keys → inserts into `Items` table
 
-**Shared helpers:** `create_table`, `insert_values`, `sanitize_column_name`, `sanitize_table_name`, `copy_to_remote`
+**Shared helpers:** `create_table`, `insert_values`, `sanitize_column_name`, `sanitize_table_name`, `copy_to_remote`, `arg_value`
 
-**Dependencies:** calamine (Excel), rusqlite with `bundled` (SQLite), reqwest with `blocking`+`json` (HTTP), serde_json (JSON parsing), anyhow (errors).
+**Dependencies:** calamine (Excel), rusqlite with `bundled` (SQLite), reqwest with `blocking`+`json`+`rustls-tls` (HTTP), serde_json (JSON parsing), anyhow (errors).
+
+## CLI Flags
+
+`arg_value()` parses `--flag <value>` pairs off `std::env::args()`; all flags are optional and the no-flag behaviour is the historical one.
+
+- `--api` — read from the TrustBox REST API instead of XLSX
+- `--xlsx <file>` — input workbook (default `trustbox_2_2_2026.xlsx`)
+- `--out <path>` — output database path; parent dirs are created via `fs::create_dir_all` (default `nahrung.db`)
+- `--no-deploy` — skip the `scp` deploy, build locally only
+
+Convention: input workbooks in `xlsx/`, generated databases in `db/`. Both are covered by the existing `.gitignore` patterns (`*.xlsx`, `*.db`, `nahrung.db`) — the dumps are customer data and must never be committed.
 
 ## Important Details
 
-- XLSX filename hardcoded: `trustbox_2_2_2026.xlsx`
-- Output filename hardcoded: `nahrung.db`
+- Default XLSX filename: `trustbox_2_2_2026.xlsx` (override with `--xlsx`)
+- Default output filename: `nahrung.db` (override with `--out`)
 - API base URL: `https://trustbox.firstbase.ch/api/v1`
 - API credentials via env vars: `TRUSTBOX_USER`, `TRUSTBOX_PASSWORD`
 - API pagination chunk size: 100 items per request
-- Remote deploy target hardcoded in `main.rs` and `Makefile`
+- Remote deploy target hardcoded in `main.rs` and `Makefile`; suppress with `--no-deploy`
+- `reqwest` uses `rustls-tls` with `default-features = false` — the previous native-tls default needed system OpenSSL + `pkg-config`, which broke the build on machines without them
 - All SQLite columns are TEXT type regardless of source data
+
+## Data Quality (TrustBox dump)
+
+The dump is **not unique by GTIN**. Measured on the 31.07.2026 dump (96'286 rows, 74 columns):
+
+- 1'302 GTINs occur more than once (2'730 rows); in every case same target market (756) but **different GLN** — the same GTIN is published by several data owners
+- 112 of those appear as both `GDSNBaseUnit` and `GDSNPackage`
+- 427 rows have no GTIN; 3 carry the placeholder `00000000000000`
+
+A GTIN lookup can therefore return several rows. Open question raised with GS1 on 18.08.2026: which record is authoritative on a GTIN match.
