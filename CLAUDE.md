@@ -59,4 +59,13 @@ The dump is **not unique by GTIN**. Measured on the 31.07.2026 dump (96'286 rows
 - 112 of those appear as both `GDSNBaseUnit` and `GDSNPackage`
 - 427 rows have no GTIN; 3 carry the placeholder `00000000000000`
 
-A GTIN lookup can therefore return several rows. Open question raised with GS1 on 18.08.2026: which record is authoritative on a GTIN match.
+This is **by design, not a data defect**. Per GS1 Switzerland (19.08.2026): the unique key of a
+GDSN item is **GTIN + sender GLN + target market**, and TrustBox follows the same GDSN rules as
+firstbase. Since TrustBox is Switzerland-only, the target market is always 756, so GTIN + GLN is
+the effective key — the same article may legitimately be published by several suppliers.
+
+Consequence for lookups: **GTIN alone is not a primary key.** A match should return all rows and
+expose the GLN. If exactly one record must be picked, there is no authoritative tie-break in the
+data — the GS1 company prefix of the GTIN identifies the brand owner and matches a supplier GLN in
+only ~28 % of the duplicate cases (measured: 369 of 1'302 unique, 928 with no prefix match), and
+there is no last-changed column to fall back on.

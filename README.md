@@ -68,4 +68,10 @@ The TrustBox dump is not unique by GTIN. In the 31.07.2026 dump (96'286 rows, 74
 - 112 of those carry the same GTIN once as `GDSNBaseUnit` and once as `GDSNPackage`.
 - 427 rows have no GTIN at all, 3 carry the placeholder GTIN `00000000000000`.
 
-So a lookup by GTIN alone can return several rows; pick the authoritative record by GLN (or filter placeholders) when matching against a customer GTIN list.
+This is by design. GS1 Switzerland confirmed (19.08.2026) that a GDSN item is keyed by
+**GTIN + sender GLN + target market**; TrustBox is Switzerland-only, so the target market is always
+756 and the same article can be published by several suppliers.
+
+So a lookup by GTIN alone can return several rows — keep them all and carry the GLN. There is no
+authoritative tie-break in the dump: the GTIN's GS1 company prefix identifies a supplier GLN in only
+369 of the 1'302 duplicate cases, and the dump has no last-changed column.
