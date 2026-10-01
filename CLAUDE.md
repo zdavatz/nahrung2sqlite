@@ -48,6 +48,7 @@ Convention: input workbooks in `xlsx/`, generated databases in `db/`. Both are c
 - API credentials via env vars: `TRUSTBOX_USER`, `TRUSTBOX_PASSWORD`
 - API pagination chunk size: 100 items per request
 - Remote deploy target hardcoded in `main.rs` and `Makefile`; suppress with `--no-deploy`
+- The deploy is a plain non-interactive `scp` that overwrites the live `nahrung.db`: it needs an SSH key authorised on the server and the host key in `~/.ssh/known_hosts`, otherwise it fails with `Host key verification failed` after the database has already been built
 - `reqwest` uses `rustls-tls` with `default-features = false` — the previous native-tls default needed system OpenSSL + `pkg-config`, which broke the build on machines without them
 - All SQLite columns are TEXT type regardless of source data
 
