@@ -53,11 +53,15 @@ Convention: input workbooks in `xlsx/`, generated databases in `db/`. Both are c
 
 ## Data Quality (TrustBox dump)
 
-The dump is **not unique by GTIN**. Measured on the 31.07.2026 dump (96'286 rows, 74 columns):
+The dump is **not unique by GTIN**. Measured on the 30.09.2026 dump (97'921 rows, 74 columns;
+95'973 distinct GTINs, 97'491 distinct GTIN + GLN pairs, 462 GLNs):
 
-- 1'302 GTINs occur more than once (2'730 rows); in every case same target market (756) but **different GLN** — the same GTIN is published by several data owners
-- 112 of those appear as both `GDSNBaseUnit` and `GDSNPackage`
-- 427 rows have no GTIN; 3 carry the placeholder `00000000000000`
+- 1'392 GTINs occur more than once (2'910 rows); in every case same target market (756) but **different GLN** — the same GTIN is published by several data owners
+- 111 of those appear as both `GDSNBaseUnit` and `GDSNPackage`
+- 430 rows have no GTIN — these are not articles but 353 `Participant` rows, 4 `SubscriptionGDSN` rows and 73 rows without a category; 3 rows carry the placeholder `00000000000000`
+
+Compared with the 31.07.2026 dump (96'286 rows, same 74 columns, 1'302 duplicate GTINs): +1'635
+rows, made up of 2'169 new and 537 removed GTIN + GLN pairs.
 
 This is **by design, not a data defect**. Per GS1 Switzerland (19.08.2026): the unique key of a
 GDSN item is **GTIN + sender GLN + target market**, and TrustBox follows the same GDSN rules as
@@ -67,5 +71,5 @@ the effective key — the same article may legitimately be published by several 
 Consequence for lookups: **GTIN alone is not a primary key.** A match should return all rows and
 expose the GLN. If exactly one record must be picked, there is no authoritative tie-break in the
 data — the GS1 company prefix of the GTIN identifies the brand owner and matches a supplier GLN in
-only ~28 % of the duplicate cases (measured: 369 of 1'302 unique, 928 with no prefix match), and
-there is no last-changed column to fall back on.
+only ~26 % of the duplicate cases (measured on a 7-digit prefix: 368 of 1'392 unique, 1'019 with
+no prefix match), and there is no last-changed column to fall back on.
