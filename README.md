@@ -35,7 +35,7 @@ Local build from a dated dump, without touching the remote server:
 ```bash
 cargo build --release
 ./target/release/nahrung2sqlite \
-  --xlsx "xlsx/Open_Data_trustbox, 30.9.2026.xlsx" \
+  --xlsx "xlsx/trustbox_Open Data Dump, 31.10.2026.xlsx" \
   --out db/nahrung.db \
   --no-deploy
 ```
@@ -62,19 +62,20 @@ By convention input workbooks live in `xlsx/` and generated databases in `db/`; 
 
 ## Data notes
 
-The TrustBox dump is not unique by GTIN. In the 30.09.2026 dump (97'921 rows, 74 columns, 95'973
-distinct GTINs, 462 GLNs):
+The TrustBox dump is not unique by GTIN. In the 31.10.2026 dump (101'060 rows, 74 columns, 99'106
+distinct GTINs, 464 GLNs):
 
-- 1'392 GTINs occur more than once (2'910 rows). In every case the target market is identical (756) but the GLN differs — the same GTIN is published by several data owners.
-- 111 of those carry the same GTIN once as `GDSNBaseUnit` and once as `GDSNPackage`.
-- 430 rows have no GTIN at all — they are not articles but `Participant` (353), `SubscriptionGDSN` (4) and uncategorised (73) rows. 3 rows carry the placeholder GTIN `00000000000000`.
+- 1'395 GTINs occur more than once (2'915 rows). In every case the target market is identical (756) but the GLN differs — the same GTIN is published by several data owners.
+- 110 of those carry the same GTIN once as `GDSNBaseUnit` and once as `GDSNPackage`.
+- 432 rows have no GTIN at all — they are not articles but `Participant` (354), `SubscriptionGDSN` (4) and uncategorised (74) rows. 3 rows carry the placeholder GTIN `00000000000000`.
 
 | Dump | Rows | Distinct GTINs | GTIN + GLN pairs | Duplicate GTINs |
 | --- | --- | --- | --- | --- |
 | 31.07.2026 | 96'286 | 94'431 | 95'859 | 1'302 |
 | 30.09.2026 | 97'921 | 95'973 | 97'491 | 1'392 |
+| 31.10.2026 | 101'060 | 99'106 | 100'628 | 1'395 |
 
-Between the two dumps 2'169 GTIN + GLN pairs were added and 537 removed; the columns are unchanged.
+From July to September 2'169 GTIN + GLN pairs were added and 537 removed, from September to October 3'141 added and 4 removed; the columns are unchanged.
 
 This is by design. GS1 Switzerland confirmed (19.08.2026) that a GDSN item is keyed by
 **GTIN + sender GLN + target market**; TrustBox is Switzerland-only, so the target market is always
@@ -82,4 +83,4 @@ This is by design. GS1 Switzerland confirmed (19.08.2026) that a GDSN item is ke
 
 So a lookup by GTIN alone can return several rows — keep them all and carry the GLN. There is no
 authoritative tie-break in the dump: the GTIN's GS1 company prefix identifies a supplier GLN in only
-368 of the 1'392 duplicate cases, and the dump has no last-changed column.
+368 of the 1'395 duplicate cases, and the dump has no last-changed column.
